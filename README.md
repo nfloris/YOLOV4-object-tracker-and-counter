@@ -7,8 +7,8 @@
 ## Demo del sistema di monitoraggio su veicoli
 <p align="center"><img src="data/helpers/cars.gif"\></p>
 
-## Demo of Object Tracker on Cars
-<p align="center"><img src="data/helpers/counter_example.avi"\></p>
+## Demo del counter su veicoli che entrano ed escono da un parcheggio
+<p align="center"><img src="data/helpers/counter_example.gif"\></p>
 
 ### GUIDA ALL'INSTALLAZIONE
 Per iniziare, crea l'envirorment Conda, una volta assicurato di trovarti all'interno della cartella "yolov4-deepsort-master".
