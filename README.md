@@ -4,6 +4,12 @@
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](LICENSE)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1zmeSTP3J5zu2d5fHgsQC06DyYEYJFXq1?usp=sharing)
 
+## Demo del sistema di monitoraggio su veicoli
+<p align="center"><img src="data/helpers/cars.gif"\></p>
+
+## Demo of Object Tracker on Cars
+<p align="center"><img src="data/helpers/counter_example.avi"\></p>
+
 ### GUIDA ALL'INSTALLAZIONE
 Per iniziare, crea l'envirorment Conda, una volta assicurato di trovarti all'interno della cartella "yolov4-deepsort-master".
 
