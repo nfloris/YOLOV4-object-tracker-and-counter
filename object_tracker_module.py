@@ -131,28 +131,6 @@ def main(_argv):
         frame = cv2.resize(frame, (1280, 720))
         frame_size = frame.shape[:2]
         full_frame = frame
-        roi_minx = 70
-        roi_maxx = 400
-        roi_miny = 5
-        roi_maxy = 1200
-
-        # frame = frame[roi_minx:roi_maxx, roi_miny:roi_maxy]
-
-        def calc_bboxes_mean(b_boxes):
-            mean = [0, 0, 0, 0]
-            nboxes = len(b_boxes)
-            print(len(b_boxes))
-            for i in range(nboxes):
-                mean[0] += bboxes[i][0]
-                mean[1] += bboxes[i][1]
-                mean[2] += bboxes[i][2]
-                mean[3] += bboxes[i][3]
-            for i in range(len(mean)):
-                mean[i] = mean[i] / len(mean)
-            return mean
-
-        # Modify the following line to resize the frame to the ROI size
-        # image_data = cv2.resize(frame[roi_y:roi_y + roi_height, roi_x:roi_x + roi_width], (input_size, input_size))
 
         image_data = cv2.resize(frame, (input_size, input_size))
         image_data = image_data / 255.
@@ -211,7 +189,8 @@ def main(_argv):
         # per impostazione di default concedi il permesso a tutte le classi presenti nel file .names
         allowed_classes = list(class_names.values())
         # classi permesse custom
-        # allowed_classes = ['person']
+        with open('./data/classes/allowed_classes.txt', 'r') as file:
+            allowed_classes = file.read()
 
         # per ogni oggetto si utilizza l'indice di classe per ottenere il nome della classe associato
         names = []
@@ -261,10 +240,42 @@ def main(_argv):
                     continue
                 bbox = track.to_tlbr()
                 class_name = track.get_class()
-                if class_name != 'person':
-                    id_ = track.track_id
-                    counter.initialize_bboxes(str(id_))
-                    is_moving[str(id_)] = ''
+                id_ = track.track_id
+                counter.initialize_bboxes(str(id_))
+                is_moving[str(id_)] = ''
+
+        objects_count = []
+        index = 0
+        for polygon in polygons_list:
+            # Stampa a video del poligono corrispondente alla zona esterna
+            cv2.polylines(full_frame, [polygon[0]], True, (245, 66, 230), 2)
+            # Stampa a video del poligono corrispondente alla zona interna
+            cv2.polylines(full_frame, [polygon[1]], True, (90, 245, 66), 2)
+
+            cv2.rectangle(full_frame, (polygon[1][2][0] + 70, polygon[1][2][1] + 1),
+                          (polygon[1][2][0] + 175, polygon[1][2][1] + 25),
+                          (45, 122, 50), -1)
+
+            # stamapa a video dei risultati del counter per ogni ROI
+            cv2.putText(frame, "Regione " + str(index), (polygon[1][2][0] + 75,
+                                                         polygon[1][2][1] + 16),
+                        0, 0.6, (255, 255, 255), 2)
+
+            objects_count.append(0)
+            index += 1
+
+        n_rows = len(polygons_list)
+        y_min = 10
+        y_max = y_min + (n_rows * 34)
+        cv2.rectangle(full_frame, (15, y_min), (545, y_max), (0, 0, 0), -1)
+        for i in range(n_rows):  # entrata
+            if polygons_list[i][2]:
+                string_to_print = " oggetti entrati: "
+            else:  # uscita
+                string_to_print = " oggetti usciti: "
+
+            cv2.putText(full_frame, "Regione " + str(i) + string_to_print + str(objects_count[i]),
+                        (20, (32 + 40 * i)), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.5, (0, 255, 0), 2)
 
         for track in tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
@@ -273,56 +284,38 @@ def main(_argv):
             class_name = track.get_class()
             id_ = track.track_id
 
-            if class_name != 'person':
-                # Il counter restituisce per ogni roi il numero di veicoli conteggiati, nonchè il bbox da stampare
-                counter_results = counter.area_control(str(id_), class_name, bbox, frame_num)
+            # Il counter restituisce per ogni roi il numero di veicoli conteggiati, nonchè il bbox da stampare
+            counter_results = counter.area_control(str(id_), class_name, bbox, frame_num)
 
-                index = 0
-                for polygon in polygons_list:
-                    # Stampa a video del poligono corrispondente alla zona esterna
-                    cv2.polylines(full_frame, [polygon[0]], True, (245, 66, 230), 2)
-                    # Stampa a video del poligono corrispondente alla zona interna
-                    cv2.polylines(full_frame, [polygon[1]], True, (90, 245, 66), 2)
+            color = colors[int(track.track_id) % len(colors)]
+            color = [i * 255 for i in color]
+            # il counter restituisce bbox_to_print, bounding box risultante dalla stabilizzazione
+            bbox_to_print = counter_results[1]
+            # stampa a video grazie alla libreria cv2 dei bounding box per ogni rilevazione
+            cv2.rectangle(frame, (int(bbox_to_print[0]), int(bbox_to_print[1])),
+                          (int(bbox_to_print[2]), int(bbox_to_print[3])), color, 2)
 
-                    cv2.rectangle(full_frame, (polygon[1][2][0] + 70, polygon[1][2][1] + 1),
-                                  (polygon[1][2][0] + 175, polygon[1][2][1] + 25),
-                                  (45, 122, 50), -1)
+            cv2.rectangle(frame, (int(bbox_to_print[0]), int(bbox_to_print[1] - 30)),
+                          (int(bbox_to_print[0]) + (len(class_name) + len(str(track.track_id))) * 17,
+                           int(bbox_to_print[1])), color, -1)
+            cv2.putText(frame, class_name + str(id_), (int(bbox_to_print[0]), int(bbox_to_print[1] - 10)), 0, 0.75,
+                        (255, 255, 255), 2)
 
-                    cv2.putText(frame, "Regione " + str(index), (polygon[1][2][0] + 75,
-                                                                           polygon[1][2][1] + 16),
-                                0, 0.6, (255, 255, 255), 2)
+            # Regione dedicata alla stampa del numero di oggetti rilevati dal counter
+            cv2.rectangle(full_frame, (15, y_min), (545, y_max), (0, 0, 0), -1)
+            for key, val in counter_results[0].items():
+                objects_count[key] = int(val)
+                if polygons_list[key][2]:
+                    string_to_print = " oggetti entrati: "
+                else:  # uscita
+                    string_to_print = " oggetti usciti: "
 
-                    index += 1
+                cv2.putText(full_frame, "Regione " + str(key) + string_to_print + str(val),
+                            (20, (32 + 40 * key)), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.5, (0, 255, 0), 2)
 
-                color = colors[int(track.track_id) % len(colors)]
-                color = [i * 255 for i in color]
-                bbox_to_print = counter_results[1]
-                cv2.rectangle(frame, (int(bbox_to_print[0]), int(bbox_to_print[1])),
-                              (int(bbox_to_print[2]), int(bbox_to_print[3])), color, 2)
 
-                cv2.rectangle(frame, (int(bbox_to_print[0]), int(bbox_to_print[1] - 30)),
-                              (int(bbox_to_print[0]) + (len(class_name) + len(str(track.track_id))) * 17,
-                               int(bbox_to_print[1])), color, -1)
-                cv2.putText(frame, class_name + str(id_), (int(bbox_to_print[0]), int(bbox_to_print[1] - 10)), 0, 0.75,
-                            (255, 255, 255), 2)
 
-                # Regione dedicata alla stampa del numero di oggetti rilevati dal counter
-
-                n_rows = len(counter_results[0])
-                y_min = 10
-                y_max = y_min + (n_rows * 34)
-                cv2.rectangle(full_frame, (15, y_min), (545, y_max), (0, 0, 0), -1)
-                for key, val in counter_results[0].items():
-
-                    if polygons_list[key][2]:  # entrata
-                        string_to_print = " oggetti entrati: "
-                    else:  # uscita
-                        string_to_print = " oggetti usciti: "
-
-                    cv2.putText(full_frame, "Regione " + str(key) + string_to_print + str(val),
-                                (20, (32 + 40 * key)), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.5, (0, 255, 0), 2)
-
-            # if enable info flag then print details about each track
+            # se il flag è a true stampa sul terminale le informazioni della rilevazione
             if FLAGS.info:
                 print("Tracker ID: {}, Class: {},  BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id),
                                                                                                     class_name, (
@@ -331,7 +324,7 @@ def main(_argv):
                                                                                                         int(bbox[2]),
                                                                                                         int(bbox[3]))))
 
-        # calculate frames per second of running detections
+        # calcolo dei frame per secondo
         fps = 1.0 / (time.time() - start_time)
         # print("FPS: %.2f" % fps)
         result = np.asarray(full_frame)
