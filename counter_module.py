@@ -1,15 +1,17 @@
-import numpy as np
 from shapely.geometry.polygon import Polygon
 from shapely.geometry import Point
-from roi_module import ROI
 from roi_module import generate_roi
 
 
 class Counter:
     def __init__(self, num_bboxes):
-        self.objects_bbox = dict()
+        # La classe riceve come parametro in ingresso il numero di bounding box da considerare nella stabilizzazione
         self.num_bboxes = num_bboxes
+        # per object id viene salvata la lista dei num_bboxes bounding box per cui calcolare la media
+        self.objects_bbox = dict()
+        # contiene la lista delle classi ROI generate dal area_module
         self.roi_list = []
+        # dizionario che registra per ogni ROI i risultati del conteggio (aggiornata per ogni frame)
         self.counter = dict()
 
     def initialize_bboxes(self, id_):
@@ -30,13 +32,15 @@ class Counter:
 
     def area_control(self, id_, class_name, bbox, frame_num):
         # Sequenza di istruzioni per la stabilizzazione dei bounding box:
-        # vengono trattengono gli ultimi "num_bbox" bounding box relativi ad un determinato oggetto,
+        # vengono trattengono gli ultimi "num_bboxes" bounding box relativi ad un determinato oggetto,
         # in seguito si esegue la media. Viene prodotto un bbox risultante chiamato bbox_to_print.
-        # Questo valore sarà uno dei parametri restituiti al modulo tracker che si occuperà della stsmpa a video
+        # Questo valore sarà uno dei parametri restituiti al modulo tracker che si occuperà della stampa a video
         if id_ not in self.objects_bbox:
             self.objects_bbox[id_] = list()
 
+        # gli oggetti vengono monitorati controllando la posizione del centroide relativo al suo bounding box
         current_centre = [((int(bbox[0]) + int(bbox[2])) / 2), ((int(bbox[1]) + int(bbox[3])) / 2)]
+        # controllo per la procedura di stabilizzazione: aggiornamento degli ultimi num_bboxes bounding box
         if len(self.objects_bbox[str(id_)]) >= self.num_bboxes:
             self.objects_bbox[id_].pop(0)
 
@@ -50,6 +54,7 @@ class Counter:
                 bbox_to_print[2] += elem[2]
                 bbox_to_print[3] += elem[3]
 
+            # si esegue la media
             for i in range(4):
                 bbox_to_print[i] = bbox_to_print[i] / len(self.objects_bbox[id_])
 
@@ -62,29 +67,36 @@ class Counter:
         # se l'oggetto
         roi_id = 0
         for roi in self.roi_list:
+            # filtraggio delle classi per area
+            if class_name in roi.classes:
+                # print(class_name + " presente nell'elenco dell'area: " + str(roi_id))
 
-            # region_one rappresenta "l'esterno"
-            if roi.region_one_coord.contains(Point(current_centre)):
-                if class_name + id_ not in roi.was_outside:
-                    # Se non è mai stato in quella zona viene inserito nel set
-                    roi.was_outside.add(class_name + id_)
-                    if roi.is_entrance:
-                        print("Sta per entrare " + class_name + str(id_) + " nella regione " + str(roi_id))
-                    else:
-                        print("Sta per uscire " + class_name + str(id_) + " dalla regione " + str(roi_id))
+                # region_one rappresenta "l'esterno"
+                if roi.region_one_coord.contains(Point(current_centre)):
+                    if class_name + id_ not in roi.was_outside:
+                        # Se non è mai stato in quella zona viene inserito nel set
+                        roi.was_outside.add(class_name + id_)
+                        if roi.is_entrance:
+                            print("Sta per entrare " + class_name + str(id_) + " nella regione " + str(roi_id))
+                        else:
+                            print("Sta per uscire " + class_name + str(id_) + " dalla regione " + str(roi_id))
 
-            # region_two rappresenta "l'interno"
-            if roi.region_two_coord.contains(Point(current_centre)):
-                # Se l'oggetto viene rilevato all'interno e precedentemente è stato all'esterno allora
-                # può essere considerato "entrato" e viene conteggiato
-                if class_name + id_ not in roi.is_inside and class_name + id_ in roi.was_outside:
-                    roi.is_inside.add(class_name + id_)
-                    if roi.is_entrance:
-                        print("Entrato " + class_name + str(id_) + " nella regione " + str(roi_id))
-                    else:
-                        print("Uscito " + class_name + str(id_) + " dalla regione " + str(roi_id))
+                # region_two rappresenta "l'interno"
+                if roi.region_two_coord.contains(Point(current_centre)):
+                    # Se l'oggetto viene rilevato all'interno e precedentemente è stato all'esterno allora
+                    # può essere considerato "entrato" e viene conteggiato
+                    if class_name + id_ not in roi.is_inside and class_name + id_ in roi.was_outside:
+                        roi.is_inside.add(class_name + id_)
+                        if roi.is_entrance:
+                            print("Entrato " + class_name + str(id_) + " nella regione " + str(roi_id))
+                        else:
+                            print("Uscito " + class_name + str(id_) + " dalla regione " + str(roi_id))
+
+            # else:
+                # print(class_name + " scartata perchè nomm presente nell'elenco dell'area: " + str(roi_id))
 
             self.counter[roi_id] = len(roi.is_inside)
             roi_id += 1
 
         return [self.counter, bbox_to_print]
+
