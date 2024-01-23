@@ -44,10 +44,10 @@ python save_model.py --model yolov4
 
 # Esegui il tracker su un video presente nella cartella ./data/video tramite l'opzione --video (puoi inseire le tue registrazioni)
 # L'opzione --output permette di salvare il risultato dell'esecuzione nella cartella /outputs/demo
-python object_tracker.py --video ./data/video/test.mp4 --output ./outputs/demo.avi --model yolov4
+python object_tracker_module.py --video ./data/video/test.mp4 --output ./outputs/demo.avi --model yolov4
 
 # Puoi anche eseguire il codice avendo come sorgente la registrazione della webcam (impostando il flag 'video' a 0)
-python object_tracker.py --video 0 --output ./outputs/webcam.avi --model yolov4
+python object_tracker_module.py --video 0 --output ./outputs/webcam.avi --model yolov4
 ```
 
 ## Eseguire il Tracker con YOLOV4-Tiny
